@@ -1,0 +1,2 @@
+ALTER TABLE "memories" ADD COLUMN "updated_at" timestamp with time zone DEFAULT now() NOT NULL;--> statement-breakpoint
+CREATE INDEX "embedding_idx" ON "knowledge_entities" USING hnsw ("embedding" vector_cosine_ops);

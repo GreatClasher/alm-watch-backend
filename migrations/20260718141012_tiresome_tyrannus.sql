@@ -1,0 +1,1 @@
+ALTER TABLE "memories" ADD COLUMN "recall_count" integer DEFAULT 0;
