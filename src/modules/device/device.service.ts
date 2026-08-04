@@ -1,4 +1,10 @@
-import { ConflictException, Inject, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { eq, desc } from 'drizzle-orm';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
@@ -64,7 +70,10 @@ export class DeviceService {
       device = inserted[0]!;
     }
 
-    const expiresInSeconds = this.configService.get<number>('JWT_EXPIRES_IN', 86400);
+    const expiresInSeconds = parseInt(
+      String(this.configService.get<string | number>('JWT_EXPIRES_IN', 86400)),
+      10,
+    );
     const expiresAt = new Date(Date.now() + expiresInSeconds * 1000);
 
     const token = jwt.sign(
@@ -92,17 +101,21 @@ export class DeviceService {
   }
 
   async getDevices(whereObj: any, orderObj: any, selectObj: string[], page: number, limit: number) {
-    const { buildDrizzleWhere, buildDrizzleOrderBy, buildDrizzleSelect } = require('../../common/utils/query-parser.util');
+    const {
+      buildDrizzleWhere,
+      buildDrizzleOrderBy,
+      buildDrizzleSelect,
+    } = require('../../common/utils/query-parser.util');
     const { sessions } = require('../session/entities/session.entity');
     const { count, sql } = require('drizzle-orm');
 
     const whereClause = buildDrizzleWhere(devices, whereObj);
     const orderClauses = buildDrizzleOrderBy(devices, orderObj);
-    
+
     // Check if sessionCount is requested in selectObj
     const includeSessionCount = selectObj && selectObj.includes('sessionCount');
     let dbSelectObj = buildDrizzleSelect(devices, selectObj);
-    
+
     if (includeSessionCount) {
       dbSelectObj = dbSelectObj || { ...devices };
       dbSelectObj.sessionCount = sql<number>`cast(count(${sessions.id}) as integer)`;
@@ -125,7 +138,7 @@ export class DeviceService {
     }
 
     const data = await query.limit(limit).offset((page - 1) * limit);
-    
+
     // For total count
     let totalQuery = this.db.select({ count: count() }).from(devices).$dynamic();
     if (whereClause) {
@@ -148,7 +161,8 @@ export class DeviceService {
   }
 
   async updateHeartbeat(deviceId: string, data: HeartbeatUpdateData): Promise<void> {
-    await this.db.update(devices)
+    await this.db
+      .update(devices)
       .set({
         lastHeartbeatAt: new Date(),
         batteryLevel: data.batteryLevel,
