@@ -8,7 +8,7 @@ import { speakers } from '../speaker/entities/speaker.entity';
 import { LlmProvider } from '../llm/llm.provider';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { eq, asc } from 'drizzle-orm';
-import { SchemaType } from '@google/generative-ai';
+import { SchemaType } from '@google-cloud/vertexai';
 
 export interface GeneratedEpisode {
   id: string;

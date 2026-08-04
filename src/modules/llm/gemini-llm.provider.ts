@@ -1,20 +1,19 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { GoogleGenerativeAI, Schema } from '@google/generative-ai';
+import { VertexAI } from '@google-cloud/vertexai';
 import { LlmProvider } from './llm.provider';
 
 @Injectable()
 export class GeminiLlmProvider extends LlmProvider {
-  private ai: GoogleGenerativeAI;
+  private ai: VertexAI;
   private logger = new Logger(GeminiLlmProvider.name);
 
   constructor() {
     super();
-    // Use env var or empty string
-    this.ai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+    this.ai = new VertexAI({ project: 'audiocube', location: 'asia-south1' });
   }
 
-  async generateStructured<T>(prompt: string, schema: Schema): Promise<T> {
-    const modelName = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
+  async generateStructured<T>(prompt: string, schema: any): Promise<T> {
+    const modelName = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
     const model = this.ai.getGenerativeModel({
       model: modelName,
       generationConfig: {
@@ -24,12 +23,12 @@ export class GeminiLlmProvider extends LlmProvider {
     });
 
     const result = await model.generateContent(prompt);
-    const text = result.response.text();
-    return JSON.parse(text) as T;
+    const response = await result.response;
+    return JSON.parse(response.candidates[0].content.parts[0].text) as T;
   }
 
   async generateEmbedding(text: string): Promise<number[]> {
-    const model = this.ai.getGenerativeModel({ model: 'gemini-embedding-2' });
+    const model = this.ai.getGenerativeModel({ model: 'text-embedding-004' });
     const result = await model.embedContent({
       content: { role: 'user', parts: [{ text }] },
     });
@@ -37,17 +36,18 @@ export class GeminiLlmProvider extends LlmProvider {
   }
 
   async generateText(prompt: string, systemInstruction?: string): Promise<string> {
-    const modelName = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
+    const modelName = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
     const model = this.ai.getGenerativeModel({ 
       model: modelName,
       ...(systemInstruction ? { systemInstruction } : {})
     });
     const result = await model.generateContent(prompt);
-    return result.response.text();
+    const response = await result.response;
+    return response.candidates[0].content.parts[0].text;
   }
 
   async generateFromAudio(audioBase64: string, mimeType: string, prompt: string, systemInstruction?: string): Promise<string> {
-    const modelName = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
+    const modelName = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
     const model = this.ai.getGenerativeModel({ 
       model: modelName,
       ...(systemInstruction ? { systemInstruction } : {})
@@ -63,6 +63,7 @@ export class GeminiLlmProvider extends LlmProvider {
       { text: prompt }
     ]);
     
-    return result.response.text();
+    const response = await result.response;
+    return response.candidates[0].content.parts[0].text;
   }
 }

@@ -45,18 +45,31 @@ export class AiOrchestratorService implements OnModuleDestroy {
         and(
           eq(recordings.status, 'finalized'),
           notExists(
-            this.db.select().from(pipelineRuns).where(and(eq(pipelineRuns.recordingId, recordings.id), eq(pipelineRuns.targetLayer, TargetLayer.OBSERVATION)))
-          )
-        )
+            this.db
+              .select()
+              .from(pipelineRuns)
+              .where(
+                and(
+                  eq(pipelineRuns.recordingId, recordings.id),
+                  eq(pipelineRuns.targetLayer, TargetLayer.OBSERVATION),
+                ),
+              ),
+          ),
+        ),
       );
 
     // Fetch current queue to prevent duplicates
     const queuedJobs = await this.redisClient.lrange('ai_jobs', 0, -1);
     const queuedRecordingIds = new Set(
-      queuedJobs.map(job => {
-        try { return JSON.parse(job).recordingId; } 
-        catch { return null; }
-      }).filter(Boolean)
+      queuedJobs
+        .map((job) => {
+          try {
+            return JSON.parse(job).recordingId;
+          } catch {
+            return null;
+          }
+        })
+        .filter(Boolean),
     );
 
     for (const rec of finalizedRecordings) {
@@ -64,26 +77,33 @@ export class AiOrchestratorService implements OnModuleDestroy {
         continue; // Already in queue, skip
       }
 
-      this.logger.info({ recordingId: rec.id }, 'Recording finalized. Enqueueing for AI processing.');
-      
+      this.logger.info(
+        { recordingId: rec.id },
+        'Recording finalized. Enqueueing for AI processing.',
+      );
+
       // 1. Create pipeline_run record to mark as pending
       await this.db.insert(pipelineRuns).values({
         userId: rec.userId,
         recordingId: rec.id,
         targetLayer: TargetLayer.OBSERVATION,
         status: PipelineStatus.PENDING,
+        startedAt: new Date(),
         modelVersions: {},
       });
 
       // 2. Queue the job for the Python worker
-      await this.redisClient.rpush('ai_jobs', JSON.stringify({
-        recordingId: rec.id,
-        deviceId: rec.deviceId,
-      }));
+      await this.redisClient.rpush(
+        'ai_jobs',
+        JSON.stringify({
+          recordingId: rec.id,
+          deviceId: rec.deviceId,
+        }),
+      );
       queuedRecordingIds.add(rec.id);
     }
 
-    // 3. Find runs that are stuck in 'pending' for > 5 minutes for OBSERVATION
+    // 3. Find runs that are stuck in 'pending' for > 60 minutes for OBSERVATION
     const stuckRuns = await this.db
       .select()
       .from(pipelineRuns)
@@ -91,8 +111,8 @@ export class AiOrchestratorService implements OnModuleDestroy {
         and(
           eq(pipelineRuns.status, PipelineStatus.PENDING),
           eq(pipelineRuns.targetLayer, TargetLayer.OBSERVATION),
-          sql`NOW() - ${pipelineRuns.createdAt} > interval '5 minutes'`
-        )
+          sql`NOW() - ${pipelineRuns.startedAt} > interval '60 minutes'`,
+        ),
       );
 
     for (const run of stuckRuns) {
@@ -100,19 +120,29 @@ export class AiOrchestratorService implements OnModuleDestroy {
         continue; // Already in queue, skip
       }
 
-      this.logger.info({ recordingId: run.recordingId }, 'Pipeline run stuck in pending. Re-enqueueing for AI processing.');
-      
+      this.logger.info(
+        { recordingId: run.recordingId },
+        'Pipeline run stuck in pending. Re-enqueueing for AI processing.',
+      );
+
       // Re-stamp startedAt so we don't re-enqueue again in 5min
-      await this.db.update(pipelineRuns)
+      await this.db
+        .update(pipelineRuns)
         .set({ startedAt: new Date() })
         .where(eq(pipelineRuns.id, run.id));
 
-      const recRecords = await this.db.select().from(recordings).where(eq(recordings.id, run.recordingId));
+      const recRecords = await this.db
+        .select()
+        .from(recordings)
+        .where(eq(recordings.id, run.recordingId));
       if (recRecords.length > 0) {
-        await this.redisClient.rpush('ai_jobs', JSON.stringify({
-          recordingId: run.recordingId,
-          deviceId: recRecords[0]!.deviceId,
-        }));
+        await this.redisClient.rpush(
+          'ai_jobs',
+          JSON.stringify({
+            recordingId: run.recordingId,
+            deviceId: recRecords[0]!.deviceId,
+          }),
+        );
         queuedRecordingIds.add(run.recordingId);
       }
     }
@@ -124,28 +154,37 @@ export class AiOrchestratorService implements OnModuleDestroy {
       .where(
         and(
           eq(pipelineRuns.targetLayer, TargetLayer.EPISODE),
-          sql`("pipeline_runs"."status" = 'pending' OR ("pipeline_runs"."status" = 'processing' AND NOW() - "pipeline_runs"."started_at" > interval '5 minutes'))`
-        )
+          sql`("pipeline_runs"."status" = 'pending' OR ("pipeline_runs"."status" = 'processing' AND NOW() - "pipeline_runs"."started_at" > interval '5 minutes'))`,
+        ),
       );
 
     for (const run of pendingEpisodes) {
-      this.logger.info({ recordingId: run.recordingId }, 'Processing Layer 4 (Episode) from pending pipeline run.');
+      this.logger.info(
+        { recordingId: run.recordingId },
+        'Processing Layer 4 (Episode) from pending pipeline run.',
+      );
 
       // Mark as PROCESSING so another cron cycle doesn't pick it up
-      await this.db.update(pipelineRuns)
+      await this.db
+        .update(pipelineRuns)
         .set({ status: PipelineStatus.PROCESSING, startedAt: new Date() })
         .where(eq(pipelineRuns.id, run.id));
 
       try {
         await this.processLayer4(run.recordingId, run.id);
-        
+
         // On success, mark as COMPLETED
-        await this.db.update(pipelineRuns)
+        await this.db
+          .update(pipelineRuns)
           .set({ status: PipelineStatus.COMPLETED, completedAt: new Date() })
           .where(eq(pipelineRuns.id, run.id));
 
         // Enqueue MEMORY layer
-        const rec = await this.db.select().from(recordings).where(eq(recordings.id, run.recordingId)).limit(1);
+        const rec = await this.db
+          .select()
+          .from(recordings)
+          .where(eq(recordings.id, run.recordingId))
+          .limit(1);
         if (rec.length > 0) {
           await this.db.insert(pipelineRuns).values({
             userId: rec[0]!.userId,
@@ -158,8 +197,12 @@ export class AiOrchestratorService implements OnModuleDestroy {
       } catch (e) {
         this.logger.error(e, `Error processing layer 4 for recording ${run.recordingId}`);
         // Revert to PENDING so it can retry later, but we could also add logic to mark FAILED after max retries
-        await this.db.update(pipelineRuns)
-          .set({ status: PipelineStatus.PENDING, error: e instanceof Error ? e.message : 'Unknown error' })
+        await this.db
+          .update(pipelineRuns)
+          .set({
+            status: PipelineStatus.PENDING,
+            error: e instanceof Error ? e.message : 'Unknown error',
+          })
           .where(eq(pipelineRuns.id, run.id));
       }
     }
@@ -171,27 +214,36 @@ export class AiOrchestratorService implements OnModuleDestroy {
       .where(
         and(
           eq(pipelineRuns.targetLayer, TargetLayer.MEMORY),
-          sql`("pipeline_runs"."status" = 'pending' OR ("pipeline_runs"."status" = 'processing' AND NOW() - "pipeline_runs"."started_at" > interval '5 minutes'))`
-        )
+          sql`("pipeline_runs"."status" = 'pending' OR ("pipeline_runs"."status" = 'processing' AND NOW() - "pipeline_runs"."started_at" > interval '5 minutes'))`,
+        ),
       );
 
     for (const run of pendingMemories) {
-      this.logger.info({ recordingId: run.recordingId }, 'Processing Layer 5 (Memory) from pending pipeline run.');
+      this.logger.info(
+        { recordingId: run.recordingId },
+        'Processing Layer 5 (Memory) from pending pipeline run.',
+      );
 
-      await this.db.update(pipelineRuns)
+      await this.db
+        .update(pipelineRuns)
         .set({ status: PipelineStatus.PROCESSING, startedAt: new Date() })
         .where(eq(pipelineRuns.id, run.id));
 
       try {
         await this.processLayer5(run.recordingId, run.id);
-        
-        await this.db.update(pipelineRuns)
+
+        await this.db
+          .update(pipelineRuns)
           .set({ status: PipelineStatus.COMPLETED, completedAt: new Date() })
           .where(eq(pipelineRuns.id, run.id));
       } catch (e) {
         this.logger.error(e, `Error processing layer 5 for recording ${run.recordingId}`);
-        await this.db.update(pipelineRuns)
-          .set({ status: PipelineStatus.PENDING, error: e instanceof Error ? e.message : 'Unknown error' })
+        await this.db
+          .update(pipelineRuns)
+          .set({
+            status: PipelineStatus.PENDING,
+            error: e instanceof Error ? e.message : 'Unknown error',
+          })
           .where(eq(pipelineRuns.id, run.id));
       }
     }
@@ -207,31 +259,45 @@ export class AiOrchestratorService implements OnModuleDestroy {
     const queueLength = await this.redisClient.llen('ai_jobs');
     const statusRaw = await this.redisClient.get('ai_worker_status');
     const jobs = await this.redisClient.lrange('ai_jobs', 0, 5);
-    
+
     let workerStatus = { state: 'idle' };
     if (statusRaw) {
-      try { workerStatus = JSON.parse(statusRaw); } catch (e) {}
+      try {
+        workerStatus = JSON.parse(statusRaw);
+      } catch (e) {
+        this.logger.warn('Failed to parse statusRaw');
+      }
     }
-    
-    const upcoming = jobs.map(j => {
-      try { return JSON.parse(j); } catch(e) { return null; }
-    }).filter(Boolean);
+
+    const upcoming = jobs
+      .map((j) => {
+        try {
+          return JSON.parse(j);
+        } catch (e) {
+          return null;
+        }
+      })
+      .filter(Boolean);
 
     return {
       worker: workerStatus,
       queueLength,
-      upcoming
+      upcoming,
     };
   }
 
   async processLayer4(recordingId: string, pipelineRunId: string) {
     // Finalize all active conversations for this recording
-    await this.db.update(conversations)
+    await this.db
+      .update(conversations)
       .set({ status: 'finalized', endedAt: new Date() })
       .where(and(eq(conversations.recordingId, recordingId), eq(conversations.status, 'active')));
 
-    const convList = await this.db.select({ id: conversations.id }).from(conversations).where(eq(conversations.recordingId, recordingId));
-    
+    const convList = await this.db
+      .select({ id: conversations.id })
+      .from(conversations)
+      .where(eq(conversations.recordingId, recordingId));
+
     for (const conv of convList) {
       // Don't catch the error here, let it bubble up to the pipeline runner
       await this.episodeService.generateEpisode(conv.id, pipelineRunId);
@@ -239,21 +305,36 @@ export class AiOrchestratorService implements OnModuleDestroy {
   }
 
   async processLayer5(recordingId: string, pipelineRunId: string) {
-    const convList = await this.db.select({ id: conversations.id }).from(conversations).where(eq(conversations.recordingId, recordingId));
-    
+    const convList = await this.db
+      .select({ id: conversations.id })
+      .from(conversations)
+      .where(eq(conversations.recordingId, recordingId));
+
     for (const conv of convList) {
-      const epList = await this.db.select().from(episodes).where(eq(episodes.conversationId, conv.id));
-      
-      const obsList = await this.db.select().from(observations).where(eq(observations.conversationId, conv.id)).orderBy(observations.timestampStart);
-      const timeline = obsList.map(o => `[${o.timestampStart.toISOString()}] ${o.type}: ${JSON.stringify(o.payload)}`).join('\n');
+      const epList = await this.db
+        .select()
+        .from(episodes)
+        .where(eq(episodes.conversationId, conv.id));
+
+      const obsList = await this.db
+        .select()
+        .from(observations)
+        .where(eq(observations.conversationId, conv.id))
+        .orderBy(observations.timestampStart);
+      const timeline = obsList
+        .map((o) => `[${o.timestampStart.toISOString()}] ${o.type}: ${JSON.stringify(o.payload)}`)
+        .join('\n');
 
       for (const ep of epList) {
-        await this.memoryService.extractMemories({
-          id: ep.id,
-          title: ep.title,
-          summary: ep.summary,
-          timeline
-        }, pipelineRunId);
+        await this.memoryService.extractMemories(
+          {
+            id: ep.id,
+            title: ep.title,
+            summary: ep.summary,
+            timeline,
+          },
+          pipelineRunId,
+        );
       }
     }
   }

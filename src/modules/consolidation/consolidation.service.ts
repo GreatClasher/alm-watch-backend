@@ -7,7 +7,7 @@ import { episodes } from '../episode/entities/episode.entity';
 import { observations } from '../observation/entities/observation.entity';
 import { eq, and, inArray } from 'drizzle-orm';
 import { LlmProvider } from '../llm/llm.provider';
-import { SchemaType } from '@google/generative-ai';
+import { SchemaType } from '@google-cloud/vertexai';
 
 @Injectable()
 export class ConsolidationService {

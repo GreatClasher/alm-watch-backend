@@ -3,7 +3,7 @@ import { DRIZZLE } from '../../config/database.config';
 import { memories } from './entities/memory.entity';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { LlmProvider } from '../llm/llm.provider';
-import { SchemaType } from '@google/generative-ai';
+import { SchemaType } from '@google-cloud/vertexai';
 import { eq } from 'drizzle-orm';
 import { episodes } from '../episode/entities/episode.entity';
 
