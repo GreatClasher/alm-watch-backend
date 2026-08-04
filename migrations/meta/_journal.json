@@ -5,50 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1782565888420,
-      "tag": "20260627131128_init",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1782915993366,
-      "tag": "20260701142633_lame_cyclops",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1784380621966,
-      "tag": "20260718131701_alm_layers",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1784382807190,
-      "tag": "20260718135327_boring_lord_tyger",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1784383812270,
-      "tag": "20260718141012_tiresome_tyrannus",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1784384682250,
-      "tag": "20260718142442_wet_crusher_hogan",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1784386164119,
-      "tag": "20260718144924_known_owl",
+      "when": 1785846527130,
+      "tag": "20260804122847_adorable_harry_osborn",
       "breakpoints": true
     }
   ]

@@ -15,6 +15,7 @@ import { AudioIngestionService } from './audio-ingestion.service';
 import { AllWsExceptionsFilter } from '../../common/filters/ws-exception.filter';
 import { AudioPacketDto } from './dto/audio-packet.dto';
 import { HealthMetricDto } from '../health/dto/health-metric.dto';
+import { HealthService } from '../health/health.service';
 import { AssistantService } from '../assistant/assistant.service';
 
 @WebSocketGateway({ cors: true, namespace: '/device' })
@@ -30,7 +31,8 @@ export class AudioIngestionGateway implements OnGatewayConnection, OnGatewayDisc
   ) {}
 
   handleConnection(client: Socket) {
-    const authHeader = client.handshake.headers.authorization || (client.handshake.auth?.token as string);
+    const authHeader =
+      client.handshake.headers.authorization || (client.handshake.auth?.token as string);
     if (!authHeader) {
       this.logger.warn({ id: client.id }, 'Connection rejected: Missing token');
       client.disconnect();
@@ -69,7 +71,7 @@ export class AudioIngestionGateway implements OnGatewayConnection, OnGatewayDisc
   async handleAudioPacket(
     @ConnectedSocket() client: Socket,
     @MessageBody() packet: AudioPacketDto,
-  ): Promise<{ status: string; packetId?: string }> {
+  ): Promise<{ status: string; packetId?: string; answer?: string }> {
     const deviceId = client.data['deviceId'];
     const userId = client.data['userId'];
     if (!deviceId || !userId) {
@@ -80,18 +82,18 @@ export class AudioIngestionGateway implements OnGatewayConnection, OnGatewayDisc
     if (packet.payloadType === 'ACTIVE_QUERY') {
       // Fast path: Route to Jabbel Assistant
       this.logger.info({ sessionId: packet.sessionId }, 'Received ACTIVE_QUERY payload');
-      
+
       // We still ingest the packet so the audio is saved for the Slow Path (Observations generation)
       await this.ingestionService.ingestPacket(deviceId, userId, packet);
-      
+
       // Now process synchronously for the assistant
       try {
         const answer = await this.assistantService.processActiveQuery(
-          deviceId, 
-          userId, 
-          packet.payload, 
-          packet.sessionId, 
-          packet.sequenceNo
+          deviceId,
+          userId,
+          packet.payload,
+          packet.sessionId,
+          packet.sequenceNo,
         );
         // Return the answer to the client instantly
         return { status: 'accepted', answer };
@@ -124,7 +126,10 @@ export class AudioIngestionGateway implements OnGatewayConnection, OnGatewayDisc
         await this.ingestionService.ingestPacket(deviceId, userId, packet);
         ingested++;
       } catch (e) {
-        this.logger.error({ error: e, sequenceNo: packet.sequenceNo }, 'Failed to ingest batched packet');
+        this.logger.error(
+          { error: e, sequenceNo: packet.sequenceNo },
+          'Failed to ingest batched packet',
+        );
       }
     }
     return { status: 'accepted', count: ingested };

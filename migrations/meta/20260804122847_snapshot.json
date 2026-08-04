@@ -1,6 +1,6 @@
 {
-  "id": "2946835a-3672-4178-989a-2d1dbedb4583",
-  "prevId": "84adc969-d1ee-4c10-972a-e1ba317c1bfa",
+  "id": "54241f67-9405-4a43-9389-6e6a90425bc2",
+  "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -14,6 +14,12 @@
           "primaryKey": true,
           "notNull": true,
           "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
         },
         "device_id": {
           "name": "device_id",
@@ -120,6 +126,12 @@
           "primaryKey": true,
           "notNull": true,
           "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
         },
         "recording_id": {
           "name": "recording_id",
@@ -228,6 +240,12 @@
           "primaryKey": true,
           "notNull": true,
           "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
         },
         "recording_id": {
           "name": "recording_id",
@@ -351,6 +369,12 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
         "device_serial": {
           "name": "device_serial",
           "type": "varchar(64)",
@@ -444,6 +468,12 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
         "episode_id": {
           "name": "episode_id",
           "type": "uuid",
@@ -509,6 +539,12 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
         "conversation_id": {
           "name": "conversation_id",
           "type": "uuid",
@@ -544,6 +580,13 @@
           "type": "real",
           "primaryKey": false,
           "notNull": false
+        },
+        "is_synthesized": {
+          "name": "is_synthesized",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
         },
         "pipeline_run_id": {
           "name": "pipeline_run_id",
@@ -604,6 +647,12 @@
           "primaryKey": true,
           "notNull": true,
           "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
         },
         "device_id": {
           "name": "device_id",
@@ -707,6 +756,12 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
         "device_id": {
           "name": "device_id",
           "type": "uuid",
@@ -763,253 +818,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.edges": {
-      "name": "edges",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "source_id": {
-          "name": "source_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "target_id": {
-          "name": "target_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "relation": {
-          "name": "relation",
-          "type": "varchar(200)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "confidence": {
-          "name": "confidence",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "source_episode_id": {
-          "name": "source_episode_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "pipeline_run_id": {
-          "name": "pipeline_run_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "edges_source_id_knowledge_entities_id_fk": {
-          "name": "edges_source_id_knowledge_entities_id_fk",
-          "tableFrom": "edges",
-          "tableTo": "knowledge_entities",
-          "columnsFrom": [
-            "source_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "edges_target_id_knowledge_entities_id_fk": {
-          "name": "edges_target_id_knowledge_entities_id_fk",
-          "tableFrom": "edges",
-          "tableTo": "knowledge_entities",
-          "columnsFrom": [
-            "target_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "edges_source_episode_id_episodes_id_fk": {
-          "name": "edges_source_episode_id_episodes_id_fk",
-          "tableFrom": "edges",
-          "tableTo": "episodes",
-          "columnsFrom": [
-            "source_episode_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "edges_pipeline_run_id_pipeline_runs_id_fk": {
-          "name": "edges_pipeline_run_id_pipeline_runs_id_fk",
-          "tableFrom": "edges",
-          "tableTo": "pipeline_runs",
-          "columnsFrom": [
-            "pipeline_run_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.knowledge_entities": {
-      "name": "knowledge_entities",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "type": {
-          "name": "type",
-          "type": "varchar(100)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "canonical_name": {
-          "name": "canonical_name",
-          "type": "varchar(500)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "aliases": {
-          "name": "aliases",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "merged_into_id": {
-          "name": "merged_into_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "embedding": {
-          "name": "embedding",
-          "type": "vector(384)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "first_seen_at": {
-          "name": "first_seen_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "source_episode_id": {
-          "name": "source_episode_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "pipeline_run_id": {
-          "name": "pipeline_run_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "embedding_idx": {
-          "name": "embedding_idx",
-          "columns": [
-            {
-              "expression": "\"embedding\" vector_cosine_ops",
-              "asc": true,
-              "isExpression": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "hnsw",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "knowledge_entities_merged_into_id_knowledge_entities_id_fk": {
-          "name": "knowledge_entities_merged_into_id_knowledge_entities_id_fk",
-          "tableFrom": "knowledge_entities",
-          "tableTo": "knowledge_entities",
-          "columnsFrom": [
-            "merged_into_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "knowledge_entities_source_episode_id_episodes_id_fk": {
-          "name": "knowledge_entities_source_episode_id_episodes_id_fk",
-          "tableFrom": "knowledge_entities",
-          "tableTo": "episodes",
-          "columnsFrom": [
-            "source_episode_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "knowledge_entities_pipeline_run_id_pipeline_runs_id_fk": {
-          "name": "knowledge_entities_pipeline_run_id_pipeline_runs_id_fk",
-          "tableFrom": "knowledge_entities",
-          "tableTo": "pipeline_runs",
-          "columnsFrom": [
-            "pipeline_run_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.memories": {
       "name": "memories",
       "schema": "",
@@ -1020,6 +828,12 @@
           "primaryKey": true,
           "notNull": true,
           "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
         },
         "kind": {
           "name": "kind",
@@ -1048,7 +862,7 @@
         },
         "embedding": {
           "name": "embedding",
-          "type": "vector(384)",
+          "type": "vector(768)",
           "primaryKey": false,
           "notNull": false
         },
@@ -1063,6 +877,13 @@
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
+        },
+        "recall_count": {
+          "name": "recall_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
         },
         "last_updated_at": {
           "name": "last_updated_at",
@@ -1097,7 +918,23 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "memories_embedding_idx": {
+          "name": "memories_embedding_idx",
+          "columns": [
+            {
+              "expression": "\"embedding\" vector_cosine_ops",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "hnsw",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "memories_source_episode_id_episodes_id_fk": {
           "name": "memories_source_episode_id_episodes_id_fk",
@@ -1142,6 +979,12 @@
           "primaryKey": true,
           "notNull": true,
           "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
         },
         "recording_id": {
           "name": "recording_id",
@@ -1314,6 +1157,12 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
         "version": {
           "name": "version",
           "type": "varchar(50)",
@@ -1377,6 +1226,12 @@
           "primaryKey": true,
           "notNull": true,
           "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
         },
         "recording_id": {
           "name": "recording_id",
@@ -1461,6 +1316,12 @@
           "primaryKey": true,
           "notNull": true,
           "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
         },
         "recording_id": {
           "name": "recording_id",
@@ -1560,6 +1421,12 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
         "device_id": {
           "name": "device_id",
           "type": "uuid",
@@ -1639,6 +1506,12 @@
           "primaryKey": true,
           "notNull": true,
           "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
         },
         "device_id": {
           "name": "device_id",
@@ -1761,6 +1634,12 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
         "device_id": {
           "name": "device_id",
           "type": "uuid",
@@ -1827,6 +1706,12 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
         "name": {
           "name": "name",
           "type": "varchar(255)",
@@ -1865,6 +1750,12 @@
           "primaryKey": true,
           "notNull": true,
           "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
         },
         "session_id": {
           "name": "session_id",
@@ -1932,6 +1823,12 @@
           "primaryKey": true,
           "notNull": true,
           "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
         },
         "transcript_id": {
           "name": "transcript_id",

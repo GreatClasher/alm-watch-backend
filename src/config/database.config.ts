@@ -11,8 +11,11 @@ export const databaseProvider = {
     const connectionString = configService.get<string>('DATABASE_URL');
     const pool = new Pool({
       connectionString,
-      ssl: configService.get<string>('NODE_ENV') === 'production' ? { rejectUnauthorized: true } : false,
+      ssl:
+        configService.get<string>('NODE_ENV') === 'production'
+          ? { rejectUnauthorized: true }
+          : false,
     });
-    return drizzle(pool, { logger: configService.get<string>('NODE_ENV') === 'development' });
+    return drizzle(pool, { logger: false });
   },
 };

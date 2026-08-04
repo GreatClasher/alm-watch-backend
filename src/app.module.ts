@@ -31,6 +31,7 @@ import { ConsolidationModule } from './modules/consolidation/consolidation.modul
 import { QueryModule } from './modules/query/query.module';
 
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { AssistantModule } from './modules/assistant/assistant.module';
 
 @Module({
   imports: [
@@ -50,7 +51,12 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
           ...(config.get<string>('NODE_ENV') === 'development' && {
             transport: { target: 'pino-pretty', options: { colorize: true } },
           }),
-          autoLogging: true,
+          autoLogging: {
+            ignore: (req: any) => {
+              const url = req.url || '';
+              return url.includes('/queue-status') || url.includes('/dashboard/stats');
+            },
+          },
           redact: ['req.headers.authorization'],
           serializers: {
             req: (req: any) => ({ id: req.id, method: req.method, url: req.url }),
