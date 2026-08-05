@@ -3,10 +3,15 @@ import { Transform, TransformCallback } from 'stream';
 export class OggOpusWriter extends Transform {
   private pageSequence = 0;
   private granulePosition = 0;
-  private serialNumber = Math.floor(Math.random() * 0xFFFFFFFF);
+  private serialNumber = Math.floor(Math.random() * 0xffffffff);
 
-  constructor(private sampleRate: number = 16000, private channels: number = 1) {
-    super();
+  private expectedSeqNo: number | null = null;
+
+  constructor(
+    private sampleRate: number = 16000,
+    private channels: number = 1,
+  ) {
+    super({ writableObjectMode: true });
     this.writeHeaders();
   }
 
@@ -20,7 +25,7 @@ export class OggOpusWriter extends Transform {
     }
 
     const page = Buffer.alloc(27 + segmentCount + payloadSize);
-    
+
     // capture_pattern
     page.write('OggS', 0);
     // stream_structure_version
@@ -39,7 +44,7 @@ export class OggOpusWriter extends Transform {
     page.writeUInt8(segmentCount, 26);
     // segment_table
     segmentTable.copy(page, 27);
-    
+
     // payload
     let offset = 27 + segmentCount;
     for (const segment of segments) {
@@ -78,13 +83,37 @@ export class OggOpusWriter extends Transform {
 
   private lastChunk: Buffer | null = null;
 
-  _transform(chunk: Buffer, encoding: BufferEncoding, callback: TransformCallback): void {
-    // Each chunk is an opus packet. We assume each packet is exactly 20ms.
-    if (this.lastChunk) {
-      this.granulePosition += 960;
-      this.writeOggPage(0x00, this.granulePosition, [this.lastChunk]);
+  _transform(chunk: any, encoding: BufferEncoding, callback: TransformCallback): void {
+    let payload = chunk;
+    let sequenceNo: number | null = null;
+
+    // Accept { sequenceNo, payload } objects to handle gaps mathematically
+    if (typeof chunk === 'object' && !Buffer.isBuffer(chunk)) {
+      payload = chunk.payload;
+      sequenceNo = chunk.sequenceNo;
     }
-    this.lastChunk = chunk;
+
+    if (this.lastChunk) {
+      this.granulePosition += 960; // 960 samples @ 48kHz = 20ms
+
+      // If there's a gap between lastChunk and current chunk, the gap comes AFTER lastChunk.
+      // So we write lastChunk first before advancing the granule position for the gap!
+      this.writeOggPage(0x00, this.granulePosition, [this.lastChunk]);
+
+      if (sequenceNo !== null && this.expectedSeqNo !== null) {
+        const gap = sequenceNo - this.expectedSeqNo;
+        if (gap > 0) {
+          // Advance granulePosition to represent the silent gap
+          this.granulePosition += gap * 960;
+        }
+      }
+    }
+
+    if (sequenceNo !== null) {
+      this.expectedSeqNo = sequenceNo + 1;
+    }
+
+    this.lastChunk = payload;
     callback();
   }
 
@@ -107,7 +136,7 @@ export class OggOpusWriter extends Transform {
       crc ^= buffer[i]! << 24;
       for (let j = 0; j < 8; j++) {
         if (crc & 0x80000000) {
-          crc = (crc << 1) ^ 0x04C11DB7;
+          crc = (crc << 1) ^ 0x04c11db7;
         } else {
           crc <<= 1;
         }
