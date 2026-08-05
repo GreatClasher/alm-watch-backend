@@ -14,7 +14,7 @@ export class AudioPacketDto {
   timestamp!: number;
 
   // ponytail: all payload types from docs/10-ble-protocol.md §Payload Types, plus ACTIVE_QUERY
-  @IsIn(['AUDIO', 'HEARTBEAT', 'CONTROL', 'DIAGNOSTIC', 'ACTIVE_QUERY'])
+  @IsIn(['AUDIO', 'HEARTBEAT', 'CONTROL', 'DIAGNOSTIC', 'ACTIVE_QUERY', 'ACTIVE_QUERY_END'])
   payloadType!: string;
 
   @IsBase64()

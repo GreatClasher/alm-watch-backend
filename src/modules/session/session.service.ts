@@ -18,8 +18,10 @@ export class SessionService {
     const { buildDrizzleWhere, buildDrizzleOrderBy, buildDrizzleSelect } = require('../../common/utils/query-parser.util');
     
     let whereClause = buildDrizzleWhere(sessions, whereObj);
-    // Enforce deviceId matching
-    whereClause = whereClause ? and(whereClause, eq(sessions.deviceId, deviceId)) : eq(sessions.deviceId, deviceId);
+    // Enforce deviceId matching if provided
+    if (deviceId) {
+      whereClause = whereClause ? and(whereClause, eq(sessions.deviceId, deviceId)) : eq(sessions.deviceId, deviceId);
+    }
 
     const orderClauses = buildDrizzleOrderBy(sessions, orderObj);
     if (orderClauses.length === 0) {

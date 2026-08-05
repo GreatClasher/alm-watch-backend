@@ -14,7 +14,7 @@ export const recordings = pgTable('recordings', {
 });
 
 export const recordingSegments = pgTable('recording_segments', {
-  id: uuid('id').primaryKey().defaultRandom(),
+  id: uuid('id').primaryKey().defaultRandom(),  
   userId: uuid('user_id').notNull(),
   recordingId: uuid('recording_id').references(() => recordings.id).notNull(),
   sequenceNo: integer('sequence_no').notNull(),

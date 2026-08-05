@@ -14,8 +14,6 @@ export class SessionController {
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
   ) {
-    if (!deviceId) throw new BadRequestException('deviceId query param is required');
-
     let whereObj = undefined;
     let orderObj = undefined;
     let selectObj = undefined;

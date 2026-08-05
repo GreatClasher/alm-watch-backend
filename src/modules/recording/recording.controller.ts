@@ -20,4 +20,9 @@ export class RecordingController {
     });
     return new StreamableFile(stream);
   }
+
+  @Get(':id/observations')
+  async getRecordingObservations(@Param('id') id: string) {
+    return this.recordingService.getRecordingObservations(id);
+  }
 }

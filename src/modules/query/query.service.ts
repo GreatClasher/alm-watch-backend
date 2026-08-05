@@ -5,7 +5,7 @@ import { LlmProvider } from '../llm/llm.provider';
 import { memories } from '../memory/entities/memory.entity';
 import { sql, desc, eq, inArray, and, gte, lte } from 'drizzle-orm';
 import { z } from 'zod';
-
+import { SchemaType } from '@google-cloud/vertexai';
 @Injectable()
 export class QueryService {
   constructor(
@@ -14,15 +14,18 @@ export class QueryService {
   ) {}
 
   async ask(userQuery: string, userId: string) {
-    // 1. Query Rewriting & Temporal Extraction
-    const extractionSchema = z.object({
-      searchTerms: z.string().describe('The core semantic concepts to search for'),
-      startDate: z.string().optional().describe('ISO 8601 start date if the query implies a time bound'),
-      endDate: z.string().optional().describe('ISO 8601 end date if the query implies a time bound'),
-    });
+    const extractionSchema = {
+      type: SchemaType.OBJECT,
+      properties: {
+        searchTerms: { type: SchemaType.STRING, description: 'The core semantic concepts to search for' },
+        startDate: { type: SchemaType.STRING, description: 'ISO 8601 start date if the query implies a time bound' },
+        endDate: { type: SchemaType.STRING, description: 'ISO 8601 end date if the query implies a time bound' }
+      },
+      required: ['searchTerms']
+    };
 
     const extractionPrompt = `Extract search terms and an optional date range from the following user query. Current time is: ${new Date().toISOString()}.\nQuery: "${userQuery}"`;
-    const extraction = (await this.llm.generateStructured(extractionPrompt, extractionSchema)) as z.infer<typeof extractionSchema>;
+    const extraction = (await this.llm.generateStructured(extractionPrompt, extractionSchema)) as { searchTerms: string; startDate?: string; endDate?: string; };
 
     // 2. Vector Retrieval
     const queryEmbedding = await this.llm.generateEmbedding(extraction.searchTerms);
@@ -84,10 +87,18 @@ export class QueryService {
 
 
     // 4. Answer Generation
-    const answerSchema = z.object({
-      answer: z.string().describe('The answer to the user query based on the context'),
-      usedMemoryIds: z.array(z.number()).describe('List of integer Memory IDs (e.g. 1, 2) that were actually useful in answering the query'),
-    });
+    const answerSchema = {
+      type: SchemaType.OBJECT,
+      properties: {
+        answer: { type: SchemaType.STRING, description: 'The answer to the user query based on the context' },
+        usedMemoryIds: { 
+          type: SchemaType.ARRAY, 
+          description: 'List of integer Memory IDs (e.g. 1, 2) that were actually useful in answering the query',
+          items: { type: SchemaType.INTEGER }
+        }
+      },
+      required: ['answer', 'usedMemoryIds']
+    };
 
     const prompt = `You are a memory retrieval assistant. Answer the user's query using ONLY the provided context.
 If you cannot answer the query from the context, say "I don't remember that."
@@ -99,7 +110,7 @@ Context:
 ${contextText}
 `;
 
-    const result = (await this.llm.generateStructured(prompt, answerSchema)) as z.infer<typeof answerSchema>;
+    const result = (await this.llm.generateStructured(prompt, answerSchema)) as { answer: string; usedMemoryIds: number[]; };
 
     // 5. Memory Reinforcement
     if (result.usedMemoryIds.length > 0) {

@@ -59,19 +59,23 @@ ${episode.timeline}`;
     const userId = epRecord[0]!.userId;
 
     if (result.memories && result.memories.length > 0) {
-      for (const mem of result.memories) {
-        const embedding = await this.llm.generateEmbedding(mem.summary);
-        await this.db.insert(memories).values({
-          userId,
-          kind: mem.kind,
-          summary: mem.summary,
-          importance: mem.importance,
-          strength: 1.0,
-          embedding,
-          sourceEpisodeId: episode.id,
-          lastUpdatedAt: new Date(),
-          pipelineRunId
-        });
+      const summaries = result.memories.map((m: any) => m.summary);
+      const embeddings = await this.llm.generateEmbeddings(summaries);
+      
+      const insertData = result.memories.map((mem: any, index: number) => ({
+        userId,
+        kind: mem.kind,
+        summary: mem.summary,
+        importance: mem.importance,
+        strength: 1.0,
+        embedding: embeddings[index] || [],
+        sourceEpisodeId: episode.id,
+        lastUpdatedAt: new Date(),
+        pipelineRunId
+      }));
+      
+      if (insertData.length > 0) {
+        await this.db.insert(memories).values(insertData);
       }
       this.logger.log(`Extracted ${result.memories.length} memories for episode ${episode.id}`);
     }

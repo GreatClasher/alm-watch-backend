@@ -3,6 +3,7 @@ import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { eq, sql } from 'drizzle-orm';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { recordings, recordingSegments } from '../recording/entities/recording.entity';
+import { devices } from '../device/entities/device.entity';
 import { AudioPacketDto } from './dto/audio-packet.dto';
 import { DRIZZLE } from '../../config/database.config';
 import { ChecksumUtil } from './utils/checksum.util';
@@ -28,6 +29,14 @@ export class AudioIngestionService {
     const recordingRecords = await this.db.select().from(recordings).where(eq(recordings.id, packet.sessionId)).limit(1);
 
     if (recordingRecords.length === 0) {
+      // ponytail: ensure device exists before inserting recording (e.g. if DB was wiped but client kept running)
+      await this.db.insert(devices).values({
+        id: deviceId,
+        userId,
+        deviceSerial: `recovered-${deviceId}`,
+        firmwareVersion: 'unknown',
+      }).onConflictDoNothing();
+
       await this.db.insert(recordings).values({
         userId,
         id: packet.sessionId,
@@ -44,8 +53,8 @@ export class AudioIngestionService {
     const storageUri = path.join(tempDir, `${packet.sessionId}_${packet.sequenceNo}.raw`);
     fs.writeFileSync(storageUri, payloadBuf);
 
-    // Each packet is typically 80ms for Opus framing
-    const duration = 0.08; 
+    // Each packet from the watch is a single 20ms Opus frame (Config 9)
+    const duration = 0.02; 
     const startTime = packet.sequenceNo * duration;
 
     const inserted = await this.db.insert(recordingSegments).values({

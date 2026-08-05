@@ -79,29 +79,33 @@ export class AudioIngestionGateway implements OnGatewayConnection, OnGatewayDisc
       return { status: 'error' };
     }
 
-    if (packet.payloadType === 'ACTIVE_QUERY') {
-      // Fast path: Route to Jabbel Assistant
-      this.logger.info({ sessionId: packet.sessionId }, 'Received ACTIVE_QUERY payload');
-
-      // We still ingest the packet so the audio is saved for the Slow Path (Observations generation)
-      await this.ingestionService.ingestPacket(deviceId, userId, packet);
-
-      // Now process synchronously for the assistant
-      try {
-        const answer = await this.assistantService.processActiveQuery(
-          deviceId,
-          userId,
-          packet.payload,
-          packet.sessionId,
-          packet.sequenceNo,
-        );
-        // Return the answer to the client instantly
-        return { status: 'accepted', answer };
-      } catch (e) {
-        this.logger.error(e, 'Failed to process ACTIVE_QUERY');
-        return { status: 'error', answer: 'Jabbel is unavailable.' };
+      if (packet.payloadType === 'ACTIVE_QUERY') {
+        // We just ingest the packet so the audio is saved
+        await this.ingestionService.ingestPacket(deviceId, userId, packet);
+        return { status: 'accepted' };
       }
-    }
+
+      if (packet.payloadType === 'ACTIVE_QUERY_END') {
+        // Fast path: Route to Jabbel Assistant once the query ends
+        this.logger.info({ sessionId: packet.sessionId }, 'Received ACTIVE_QUERY_END payload');
+
+        // Now process synchronously for the assistant
+        try {
+          const result = await this.assistantService.processActiveQuery(
+            deviceId,
+            userId,
+            packet.sessionId,
+          );
+          // Return the answer and transcribed prompt to the client instantly
+          this.logger.info(`Fired answer back to mobile app via WebSocket for session ${packet.sessionId}`);
+          client.emit('assistant:response', { answer: result.answer, prompt: result.query });
+          return { status: 'accepted', answer: result.answer };
+        } catch (e) {
+          this.logger.error(e, 'Failed to process ACTIVE_QUERY_END');
+          client.emit('assistant:response', { answer: 'Jabbel is unavailable.' });
+          return { status: 'error', answer: 'Jabbel is unavailable.' };
+        }
+      }
 
     const packetId = await this.ingestionService.ingestPacket(deviceId, userId, packet);
     return { status: 'accepted', packetId };

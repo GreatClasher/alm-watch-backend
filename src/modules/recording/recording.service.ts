@@ -4,6 +4,7 @@ import { DRIZZLE } from '../../config/database.config';
 import { recordings, recordingSegments } from './entities/recording.entity';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { eq, and, lte, asc } from 'drizzle-orm';
+import { observations } from '../observation/entities/observation.entity';
 import * as fs from 'fs';
 
 @Injectable()
@@ -70,5 +71,12 @@ export class RecordingService {
     });
 
     return oggWriter;
+  }
+
+  async getRecordingObservations(recordingId: string) {
+    const result = await this.db.select().from(observations)
+      .where(eq(observations.recordingId, recordingId))
+      .orderBy(asc(observations.timestampStart));
+    return result;
   }
 }
