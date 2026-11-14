@@ -204,5 +204,3 @@ npm run typecheck
 
 ## 📄 License
 This project is open-source and available under the [MIT License](LICENSE).
-
-**Author:** Anubhav Yadav ([@GreatClasher](https://github.com/GreatClasher))
