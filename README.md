@@ -200,7 +200,4 @@ npm run test:cov
 npm run typecheck
 ```
 
----
 
-## 📄 License
-This project is open-source and available under the [MIT License](LICENSE).
